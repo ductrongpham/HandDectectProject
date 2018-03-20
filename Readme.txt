@@ -28,4 +28,5 @@ int main(int, char**)
     return 0;
 }
 
+https://www.uco.es/investiga/grupos/ava/node/40
 http://www.jackyle.xyz/2017/12/cai-at-opencv-32-pythonc-cho-raspberry.html

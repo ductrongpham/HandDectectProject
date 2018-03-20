@@ -27,3 +27,5 @@ int main(int, char**)
     // the camera will be deinitialized automatically in VideoCapture destructor
     return 0;
 }
+
+http://www.jackyle.xyz/2017/12/cai-at-opencv-32-pythonc-cho-raspberry.html

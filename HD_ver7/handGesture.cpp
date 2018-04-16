@@ -1,24 +1,31 @@
 ﻿#include "handGesture.hpp"
 #include <opencv2/imgproc/imgproc.hpp>
-#include<opencv2/opencv.hpp>
+#include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
 #include <string>
-
+#define OFF 3
+#define ON 5
 using namespace cv;
 using namespace std;
 
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
 HandGesture::HandGesture(){
 	frameNumber = 0;
 	nrNoFinger = 0;
+	giatricu = 0;
+	giatrimoi = 0;
+	stateControl = 0;
+	for (int i = 0; i < 5; i++){
+		stateLight[i]=0;
+	}
 	fontFace = FONT_HERSHEY_PLAIN;
 }
 
 void HandGesture::setHandGesture(MyImage *msrc, vector<Point> contourShape, vector<int> hullInt, vector<Point> hullPoint,
-	vector<Vec4i> defectShape, Rect bRectShape, int frNumber){
+	vector<Vec4i> defectShape, Rect bRectShape, int& frNumber){
 
 	contours = contourShape;
 	initVectors();
@@ -30,24 +37,29 @@ void HandGesture::setHandGesture(MyImage *msrc, vector<Point> contourShape, vect
 	fontFace = FONT_HERSHEY_PLAIN;
 	bRect_height = bRect.height;
 	bRect_width = bRect.width;
+
 }
 
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Point HandGesture::getPointCenter(){
+	Point p;
+	cv::Moments mo;
+	mo = cv::moments(contours);
+	Point center;
+	center = cv::Point(mo.m10 / mo.m00, mo.m01 / mo.m00);
+	return center;
+}
+
 void HandGesture::initVectors(){
 	hullI = vector<int>(contours.size());
 	hullP = vector<Point>(contours.size());
 	defects = vector<Vec4i>(contours.size());
 }
 
-
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 void HandGesture::analyzeContours(){
 	bRect_height = bRect.height;
 	bRect_width = bRect.width;
 }
 
-
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 string HandGesture::bool2string(bool tf){
 	if (tf)
 		return "true";
@@ -55,7 +67,6 @@ string HandGesture::bool2string(bool tf){
 		return "false";
 }
 
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 string HandGesture::intToString(int number){
 	stringstream ss;
 	ss << number;
@@ -63,7 +74,6 @@ string HandGesture::intToString(int number){
 	return str;
 }
 
-////xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 bool HandGesture::detectIfHand(){
 	analyzeContours();
 	double h = bRect_height;
@@ -77,7 +87,7 @@ bool HandGesture::detectIfHand(){
 	}
 	else if (h / w > 4 || w / h >4){
 		isHand = false;
-	}//vi sao llai nho hơn 20 ?!?
+	}
 	else if (bRect.x<20){
 		isHand = false;
 	}
@@ -115,13 +125,12 @@ bool HandGesture::detectIfHand(MyImage *mi){
 	return isHand;
 
 }
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
 float HandGesture::distanceP2P(Point a, Point b){
 	float d = sqrt(fabs(pow(a.x - b.x, 2) + pow(a.y - b.y, 2)));
 	return d;
 }
 
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 //thực hiện kiểm tra ngón tay xòe
 void HandGesture::eleminateDefects(){
 	//so sánh khoang cach
@@ -137,11 +146,11 @@ void HandGesture::eleminateDefects(){
 		startidx = v[0];	Point ptStart(contours[startidx]);
 		endidx = v[1];		Point ptEnd(contours[endidx]);
 		faridx = v[2];		Point ptFar(contours[faridx]);
-		//dept = v[3] / 256;
+		dept = v[3] / 256;
 		if (distanceP2P(ptStart, ptFar) > tolerance //xoe ngon
 			&& distanceP2P(ptEnd, ptFar) > tolerance //xoe ngon
 			&& getAngle(ptStart, ptFar, ptEnd) < angleTol
-			/*&& dept>70*/){
+			&& dept>70){
 			if (ptEnd.y > (bRect.y + bRect.height - bRect.height / 4)){
 			}
 			else if (ptStart.y > (bRect.y + bRect.height - bRect.height / 4)){
@@ -157,7 +166,6 @@ void HandGesture::eleminateDefects(){
 	removeRedundantEndPoints(defects);
 }
 
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 // remove endpoint of convexity defects if they are at the same fingertip
 // Loại bỏ điểm cuối của khiếm khuyết lồi nếu chúng ở cùng ngón tay
 void HandGesture::removeRedundantEndPoints(vector<Vec4i> newDefects){
@@ -181,7 +189,6 @@ void HandGesture::removeRedundantEndPoints(vector<Vec4i> newDefects){
 	}
 }
 
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 // remove fingertips that are too close to 
 // eachother
 // loại bỏ các ngón tay quá gần nhau
@@ -200,7 +207,6 @@ void HandGesture::removeRedundantFingerTips(){
 	fingerTips.swap(newFingers);
 }
 
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 void HandGesture::computeFingerNumber(){
 	std::sort(fingerNumbers.begin(), fingerNumbers.end());
 	int frequentNr;
@@ -228,21 +234,47 @@ void HandGesture::addFingerNumberToVector(){
 	fingerNumbers.push_back(i);
 }
 
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 // calculate most frequent numbers of fingers 
 // over 20 frames
 // tính toán số ngón tay trên 20 khung
 void HandGesture::getFingerNumber(MyImage *m, int &frNumber){
 	removeRedundantFingerTips();
-	if (/*bRect.height > m->src.rows / 2 &&*/ nrNoFinger > 12){
-		numberColor = Scalar(0, 200, 0);
+	giatricu = mostFrequentFingerNumber;
+	if (nrNoFinger > 10){
+		/*numberColor = Scalar(0, 200, 0);*/
+		numberColor = Scalar(0, 0, 0); // gia tri cu
 		addFingerNumberToVector();
-		if (frameNumber>12){
+		if (frameNumber>10){
 			nrNoFinger = 0;
 			frameNumber = 0;
 			frNumber = 0;
 			computeFingerNumber();
-			numbers2Display.push_back(mostFrequentFingerNumber);
+
+			giatrimoi = mostFrequentFingerNumber;
+			if (giatricu == giatrimoi){
+				for (int i = 0; i < 5; i++){
+					cout << stateLight[i];
+				}
+				cout << endl;
+			}
+			else{
+				if (giatricu == 0 && giatrimoi != 0){
+					stateLight[giatrimoi - 1] = 1;
+					cout << "LIGHT: " << giatrimoi << " ON" << endl;
+				}
+				if (giatricu != 0 && giatrimoi == 0){
+					stateLight[giatricu - 1] = 0;
+					cout << "LIGHT: " << giatricu << " OFF" << endl;
+				}
+				if (giatricu != 0 && giatrimoi != 0){
+					stateLight[giatrimoi - 1] = 1;
+					cout << "LIGHT: " << giatrimoi << " ON" << endl;
+				}
+				for (int i = 0; i < 5; i++){
+					cout << stateLight[i];
+				}
+				cout << endl;
+			}
 			fingerNumbers.clear();
 		}
 		else{
@@ -250,8 +282,9 @@ void HandGesture::getFingerNumber(MyImage *m, int &frNumber){
 		}
 	}
 	else{
+
 		nrNoFinger++;
-		numberColor = Scalar(255, 255, 0);
+		numberColor = Scalar(255, 255, 0); // gia tri moi cap nhat
 	}
 	addNumberToImg(m);
 }
@@ -262,23 +295,13 @@ void HandGesture::addNumberToImg(MyImage *m){
 	int offset = 30;
 	float fontSize = 1.5f;
 	int fontFace = FONT_HERSHEY_PLAIN;
-	/*for (int i = 0; i<numbers2Display.size(); i++){
-	rectangle(m->src, Point(xPos, yPos), Point(xPos + offset, yPos + offset), numberColor, 2);
-	putText(m->src, intToString(numbers2Display[i]), Point(xPos + 7, yPos + offset - 3), fontFace, fontSize, numberColor);
-	xPos += 40;
-	if (xPos>(m->src.cols - m->src.cols / 3.2)){
-	yPos += 40;
-	xPos = 10;
-	}
-	}*/
 	cv::Moments mo;
 	mo = cv::moments(contours);
 	Point center;
 	center = cv::Point(mo.m10 / mo.m00, mo.m01 / mo.m00);
 	putText(m->src, intToString(mostFrequentFingerNumber), Point(center.x, center.y + 30), fontFace, 2.0f, numberColor, 2);
-
 }
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
 float HandGesture::getAngle(Point s, Point f, Point e){
 	float l1 = distanceP2P(f, s);
 	float l2 = distanceP2P(f, e);
@@ -288,7 +311,6 @@ float HandGesture::getAngle(Point s, Point f, Point e){
 	return angle;
 }
 
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 vector<Point> HandGesture::getFingerTips(MyImage *m){
 	fingerTips.clear();
 	int i = 0;
@@ -305,53 +327,58 @@ vector<Point> HandGesture::getFingerTips(MyImage *m){
 		d++;
 		i++;
 	}
-	if (fingerTips.size() == 1/* && (fingerTips[0].x == bRect.x + bRect.width)*/){
-		fingerTips.clear();
-	}
 
-	//nếu ko có ngón nào thì thử kiểm tra trường hợp 1 ngón
-	if (fingerTips.size() == 0){
+	if (fingerTips.size() == 1){
+		fingerTips.clear();
 		checkForOneFinger(m);
 	}
+	else{
+		if (fingerTips.size() > 0){
+			checkFingerPoint();
+		}
+		else{
+			checkForOneFinger(m);
+		}
+	}
+	
 	return fingerTips;
 }
-//void HandGesture::checkFingerPoint(){
-//	cv::Moments mo;
-//	mo = cv::moments(contours);
-//	Point center;
-//	center = cv::Point(mo.m10 / mo.m00, mo.m01 / mo.m00);
-//	if (fingerTips.size() == 1){
-//		fingerTips.clear();
-//		cout << "size " << fingerTips.size() << endl;
-//	}
-//	else{
-//		for (int i = 0; i<fingerTips.size() - 1; i++){
-//			if (getAngle(fingerTips[i], center, fingerTips[i + 1]) > 95){
-//				fingerTips.clear();
-//				break;
-//			}
-//		}
-//	}
-//
-//}
-//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+void HandGesture::checkFingerPoint(){
+	cv::Moments mo;
+	mo = cv::moments(contours);
+	Point center;
+	center = cv::Point(mo.m10 / mo.m00, mo.m01 / mo.m00);
+	for (int i = 0; i < fingerTips.size() - 1; i++){
+		if (getAngle(fingerTips[i], center, fingerTips[i + 1]) > 110){
+			fingerTips.clear();
+			break;
+		}
+		if (fingerTips[i].y > (bRect.y + bRect.height / (1.5))){
+			fingerTips.clear();
+			break;
+		}
+	}
+
+}
+
 // convexity defects does not check for one finger
 // so another method has to check when there are no
 // convexity defects
 // khiếm khuyết lồi không kiểm tra cho một ngón tay để một phương pháp khác phải kiểm tra khi không có khiếm khuyết lồi
 void HandGesture::checkForOneFinger(MyImage *m){
-	int yTol = bRect.height / 6; //kiểm tra chiều dài 
+
+	int yTol = bRect.height / 6;
 	Point highestP;
-	highestP.y = m->src.cols; //dài nhất là tọa độ của src.rows
+	highestP.y = m->src.rows;
 	vector<Point>::iterator d = contours.begin();
 	while (d != contours.end()) {
-		Point& v = (*d);
+		Point v = (*d);
 		if (v.y<highestP.y){
 			highestP = v;
 		}
 		d++;
-	}
-	int n = 0;
+	}int n = 0;
 	d = hullP.begin();
 	while (d != hullP.end()) {
 		Point v = (*d);
@@ -359,8 +386,7 @@ void HandGesture::checkForOneFinger(MyImage *m){
 			n++;
 		}
 		d++;
-	}
-	if (n == 0){
+	}if (n == 0){
 		fingerTips.push_back(highestP);
 	}
 }

@@ -44,7 +44,7 @@ HandGesture::HandGesture(){
 				case 3: digitalWrite(LED3, onoff); break;
 				case 4: digitalWrite(LED4, onoff); break;
 				case 5: digitalWrite(LED5, onoff); break;
-				default: cout<<"Pin error"<<endk=l; break;
+				default: cout<<"Pin error"<<endl; break;
 			}
 		digitalWrite(LED_NO, 1);
 		delay(500);

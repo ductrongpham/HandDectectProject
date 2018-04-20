@@ -27,9 +27,9 @@
 #define LED1 17
 #define LED2 27
 #define LED3 22
-#define LED4 5
-#define LED5 6
-#define LED_NO 13 
+#define LED4 13
+#define LED5 19
+#define LED_NO 26 
 
 #endif
 

@@ -1,14 +1,21 @@
-﻿#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <process.h>
+﻿#ifdef __linux__
+#else
+
+	#define WIN32_LEAN_AND_MEAN
+	#include <Windows.h>
+	#include <process.h>
+
+	#define _WIN32_WINNT 0x0501 
+	#include <winuser.h>
+	#pragma comment(lib,"ws2_32.lib" )
+	unsigned int __stdcall ServClient(void *data);
+
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
 #include <math.h>
-#define _WIN32_WINNT 0x0501 
-#include <winuser.h>
-#pragma comment(lib,"ws2_32.lib" )
-unsigned int __stdcall ServClient(void *data);
 
 #include "myImage.hpp"
 #include "roi.hpp"
@@ -53,51 +60,55 @@ int avgColor[NSAMPLES][3]; // chưa lần lượt bộ 3 tham số HLS của
 int c_lower[NSAMPLES][3]; //chỉ số lơn nhất lần lượt của các tham số HLS	
 int c_upper[NSAMPLES][3]; //chỉ số tối thiểu lần lượt của các tham số HLS
 
-// Positive dx value means move right, Negative dx value means move left
-// Positive dy value means move down, Negative dy value means move right
-void MouseMove(int dx, int dy)
-{
-	INPUT  Input = { 0 };
-	Input.type = INPUT_MOUSE;
-	Input.mi.dwFlags = MOUSEEVENTF_MOVE; //|MOUSEEVENTF_ABSOLUTE;
-	Input.mi.dx = dx;
-	Input.mi.dy = dy;
-	::SendInput(1, &Input, sizeof(INPUT));
-}
+#ifdef __linux__
+#else
+	// Positive dx value means move right, Negative dx value means move left
+	// Positive dy value means move down, Negative dy value means move right
+	void MouseMove(int dx, int dy)
+	{
+		INPUT  Input = { 0 };
+		Input.type = INPUT_MOUSE;
+		Input.mi.dwFlags = MOUSEEVENTF_MOVE; //|MOUSEEVENTF_ABSOLUTE;
+		Input.mi.dx = dx;
+		Input.mi.dy = dy;
+		::SendInput(1, &Input, sizeof(INPUT));
+	}
 
-void MouseLeftBtnDown()
-{
-	INPUT    Input = { 0 };
-	Input.type = INPUT_MOUSE;
-	Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-	::SendInput(1, &Input, sizeof(INPUT));
-}
+	void MouseLeftBtnDown()
+	{
+		INPUT    Input = { 0 };
+		Input.type = INPUT_MOUSE;
+		Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+		::SendInput(1, &Input, sizeof(INPUT));
+	}
 
-void MouseLeftBtnUp()
-{
-	INPUT    Input = { 0 };
-	//::ZeroMemory(&Input,sizeof(INPUT));
-	Input.type = INPUT_MOUSE;
-	Input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-	::SendInput(1, &Input, sizeof(INPUT));
-}
+	void MouseLeftBtnUp()
+	{
+		INPUT    Input = { 0 };
+		//::ZeroMemory(&Input,sizeof(INPUT));
+		Input.type = INPUT_MOUSE;
+		Input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+		::SendInput(1, &Input, sizeof(INPUT));
+	}
 
-void MouseRightBtnDown()
-{
-	INPUT    Input = { 0 };
-	Input.type = INPUT_MOUSE;
-	Input.mi.dwFlags = MOUSEEVENTF_RIGHTDOWN;
-	::SendInput(1, &Input, sizeof(INPUT));
-}
+	void MouseRightBtnDown()
+	{
+		INPUT    Input = { 0 };
+		Input.type = INPUT_MOUSE;
+		Input.mi.dwFlags = MOUSEEVENTF_RIGHTDOWN;
+		::SendInput(1, &Input, sizeof(INPUT));
+	}
 
-void MouseRightBtnUp()
-{
-	INPUT Input = { 0 };
-	//::ZeroMemory(&Input,sizeof(INPUT));
-	Input.type = INPUT_MOUSE;
-	Input.mi.dwFlags = MOUSEEVENTF_RIGHTUP;
-	::SendInput(1, &Input, sizeof(INPUT));
-}
+	void MouseRightBtnUp()
+	{
+		INPUT Input = { 0 };
+		//::ZeroMemory(&Input,sizeof(INPUT));
+		Input.type = INPUT_MOUSE;
+		Input.mi.dwFlags = MOUSEEVENTF_RIGHTUP;
+		::SendInput(1, &Input, sizeof(INPUT));
+	}
+#endif
+
 vector <MyRoi> roi;
 
 //chờ nhận mẫu màu từ lòng bàn tay
@@ -432,7 +443,10 @@ int main(int argc, char *argv[]){
 				int dx = xx - xcu;
 				int dy = (yy - ycu);
 				if (!(abs(dx) <= 2 && abs(dy) <= 2))
+#ifdef __linux__
+#else
 					MouseMove(4 * dx, 4 * dy);
+#endif
 			}
 			flagC = 0;
 		}

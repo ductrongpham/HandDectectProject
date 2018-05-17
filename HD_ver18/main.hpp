@@ -132,7 +132,7 @@ struct PointCenter
 	int y; //Tọa độ y
 	int fingerNum; //Số ngón tay
 };
-void progressLinux();
+void progressLinux(int argc, char *argv[]);
 #else
 // Di chuyển chuột
 void MouseMove(int dx, int dy);

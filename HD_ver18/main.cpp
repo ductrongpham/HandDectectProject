@@ -6,7 +6,7 @@ int main(int argc, char *argv[]){
 
 	//định nghĩa I/O cho các GPIO của Raspberry
 #ifdef __linux__
-	progressLinux();
+	progressLinux(argc,argv);
 #else
 	progressWindows();
 #endif
@@ -609,7 +609,7 @@ void waitStartProgress(MyImage m){
 }
 
 #ifdef __linux__
-void progressLinux(){
+void progressLinux(int argc, char *argv[]){
 	system("sudo modprobe bcm2835-v4l2");
 	wiringPiSetupGpio();
 	pinMode(LED1, OUTPUT);

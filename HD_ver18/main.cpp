@@ -608,42 +608,6 @@ void waitStartProgress(MyImage m){
 	}
 }
 
-void controlCursor(int &flagC, int &flagM, int xx, int yy, int xcu, int ycu, HandGesture hg1){
-	if (xcu != xx && ycu != yy && hg1.isHand && hg1.mostFrequentFingerNumber == 1){
-		if (flagM == 0){
-			flagM = 1;
-		}
-		else{
-			int dx = xx - xcu;
-			int dy = (yy - ycu);
-			if (!(abs(dx) <= 2 && abs(dy) <= 2))
-				MouseMove(4 * dx, 4 * dy);
-		}
-		flagC = 0;
-	}
-	else{
-		flagM = 0;
-	}
-
-	if (hg1.mostFrequentFingerNumber >= 4 && hg1.isHand && flagC == 0){
-		flagC = 1;
-
-		MouseLeftBtnDown();
-		cout << "click left mouse " << endl;
-		Sleep(100);
-		MouseLeftBtnUp();
-
-	}
-
-	if (hg1.mostFrequentFingerNumber == 3 && hg1.isHand && flagC == 0){
-		flagC = 1;
-		MouseRightBtnDown();
-		cout << "click right mouse " << endl;
-		Sleep(100);
-		MouseRightBtnUp();
-	}
-}
-
 #ifdef __linux__
 void progressLinux(){
 	system("sudo modprobe bcm2835-v4l2");
@@ -853,8 +817,42 @@ void progressLinux(){
 	cv::destroyAllWindows();
 	m.cap.release();
 }
+#else 
+void controlCursor(int &flagC, int &flagM, int xx, int yy, int xcu, int ycu, HandGesture hg1){
+	if (xcu != xx && ycu != yy && hg1.isHand && hg1.mostFrequentFingerNumber == 1){
+		if (flagM == 0){
+			flagM = 1;
+		}
+		else{
+			int dx = xx - xcu;
+			int dy = (yy - ycu);
+			if (!(abs(dx) <= 2 && abs(dy) <= 2))
+				MouseMove(4 * dx, 4 * dy);
+		}
+		flagC = 0;
+	}
+	else{
+		flagM = 0;
+	}
 
-#endif
+	if (hg1.mostFrequentFingerNumber >= 4 && hg1.isHand && flagC == 0){
+		flagC = 1;
+
+		MouseLeftBtnDown();
+		cout << "click left mouse " << endl;
+		Sleep(100);
+		MouseLeftBtnUp();
+
+	}
+
+	if (hg1.mostFrequentFingerNumber == 3 && hg1.isHand && flagC == 0){
+		flagC = 1;
+		MouseRightBtnDown();
+		cout << "click right mouse " << endl;
+		Sleep(100);
+		MouseRightBtnUp();
+	}
+}
 
 void progressWindows(){
 
@@ -948,3 +946,5 @@ void progressWindows(){
 	cv::destroyAllWindows();
 	m.cap.release();
 }
+#endif
+
